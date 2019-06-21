@@ -93,23 +93,23 @@ if __name__ == '__main__':
 
     # Debug
     logging.info(
-        "Using BOOTSTRAP_SERVERS: {btservers}"
-        "CONSUME_TOPIC: {consume_topic}".format(
-            btservers=os.environ.get('BOOTSTRAP_SERVERS'),
-            consume_topic=os.environ.get('CONSUME_TOPIC')
+        "Using KAFKA_BOOTSTRAP_SERVERS: {btservers}"
+        "KAFKA_CONSUMER_TOPIC: {consumer_topic}".format(
+            btservers=os.environ.get('KAFKA_BOOTSTRAP_SERVERS'),
+            consumer_topic=os.environ.get('KAFKA_CONSUMER_TOPIC')
         )
     )
 
     # Setup Consumer
     logging.info("Initiating Kafka connection for Consumer...")
     consumer = KafkaConsumer(
-        os.environ.get('CONSUME_TOPIC'),
-        bootstrap_servers=os.environ.get('BOOTSTRAP_SERVERS')
+        os.environ.get('KAFKA_CONSUMER_TOPIC'),
+        bootstrap_servers=os.environ.get('KAFKA_BOOTSTRAP_SERVERS')
     )
     logging.info("Kafka consumer: {0}".format(consumer))
 
     producer = KafkaProducer(bootstrap_servers=os.environ.get(
-        'BOOTSTRAP_SERVERS'))
+        'KAFKA_BOOTSTRAP_SERVERS'))
 
     logging.info("Kafka producer: {0}".format(producer))
 
@@ -178,7 +178,7 @@ if __name__ == '__main__':
             output = json.dumps(output).encode()
 
             logging.info("JSON {0}".format(output))
-            producer.send(os.environ.get('PRODUCE_TOPIC'), output)
+            producer.send(os.environ.get('KAFKA_PRODUCER_TOPIC'), output)
 
         logging.info("Removing {0}".format(JSON_TAR_GZ))
         os.unlink(JSON_TAR_GZ)

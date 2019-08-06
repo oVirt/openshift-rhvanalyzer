@@ -129,7 +129,7 @@ if __name__ == '__main__':
         JSON_TAR_GZ = "{tmpdir}/{filename}-rhaccount{rhaccount}.tar.gz".format(
             tmpdir=tempfile.gettempdir(),
             filename="rhv-log-collector-analyzer",
-            rhaccount=record['rh_account']
+            rhaccount=record['account']
         )
 
         logging.info("Writing {fname}...".format(fname=JSON_TAR_GZ))
@@ -142,7 +142,7 @@ if __name__ == '__main__':
         # Renamed extracted JSON to show RH Account number
         JSON_FILE = "{tmpdir}/rhv_log_collector_analyzer_{rh}.json".format(
             tmpdir=tempfile.gettempdir(),
-            rh=record['rh_account']
+            rh=record['account']
         )
 
         os.rename(
@@ -153,7 +153,7 @@ if __name__ == '__main__':
         logging.info("JSON available: {0}".format(JSON_FILE))
 
         host_id = create_host(
-            record["rh_account"],
+            record["account"],
             record["metadata"]["insights_id"],
             record["metadata"]["bios_uuid"],
             record["metadata"]["fqdn"],
@@ -171,7 +171,7 @@ if __name__ == '__main__':
                 'host_product': 'OCP',
                 'host_role': 'Cluster',
                 'inventory_id': host_id,
-                'account': record['rh_account'],
+                'account': record['account'],
                 'hits': hits
             }
             logging.info("payload: {0}".format(output))

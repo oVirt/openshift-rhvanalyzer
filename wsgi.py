@@ -48,7 +48,7 @@ def parse_json(jsonfile, host_id):
 def create_host(
     account_number,
     insights_id,
-    machine_id,
+    bios_uuid,
     fqdn,
     ip_addresses
 ):
@@ -64,7 +64,7 @@ def create_host(
     payload = {
         "account": account_number,
         "insights_id": insights_id,
-        "machine_id": machine_id,
+        "bios_uuid": bios_uuid,
         "fqdn": fqdn,
         "display_name": fqdn,
         "ip_addresses": ip_addresses
@@ -155,7 +155,7 @@ if __name__ == '__main__':
         host_id = create_host(
             record["account"],
             record["metadata"]["insights_id"],
-            record["metadata"]["machine_id"],
+            record["metadata"]["bios_uuid"],
             record["metadata"]["fqdn"],
             record["metadata"]["ip_addresses"],
         )

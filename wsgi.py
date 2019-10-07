@@ -187,7 +187,7 @@ async def recommendations(msg_id: str, message: dict):
 
     for host_info in hosts.values():
         hits = []
-        if rhv-log-collector-analyzer in host_info:
+        if "rhv-log-collector-analyzer" in host_info:
             hits = await hits_with_rules(host_info)
 
         host_id = create_host(

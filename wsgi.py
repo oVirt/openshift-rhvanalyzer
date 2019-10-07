@@ -1,48 +1,51 @@
 #!/usr/bin/env python
+import asyncio
+import aiohttp
 import base64
 import json
 import os
 import logging
 import requests
-import tarfile
-import tempfile
+import ssl
+import sys
+import tar_extractor
 
+from io import BytesIO
 
-from kafka import KafkaConsumer, KafkaProducer
+from aiokafka import AIOKafkaConsumer, ConsumerRecord, AIOKafkaProducer
+from aiokafka.errors import KafkaError
 
+# Setup logging
+logging.basicConfig(
+    level=logging.WARNING,
+    format=(
+        "[%(asctime)s] %(levelname)s "
+        "[%(name)s.%(funcName)s:%(lineno)d] %(message)s"
+    )
+)
+logger = logging.getLogger('consumer')
+logger.setLevel(logging.DEBUG)
 
-logging.basicConfig(level=logging.INFO)
+# Globals
+# Asynchronous event loop
+MAIN_LOOP = asyncio.get_event_loop()
 
+# Kafka listener config
+SERVER = os.environ.get('KAFKA_BOOTSTRAP_SERVERS')
+CONSUMER_TOPIC = os.environ.get('KAFKA_CONSUMER_TOPIC')
+PRODUCER_TOPIC = os.environ.get('KAFKA_PRODUCER_TOPIC')
 
-def parse_json(jsonfile, host_id):
-    with open(jsonfile, 'r') as f:
-        json_file = f.read()
+CONSUMER = AIOKafkaConsumer(
+    CONSUMER_TOPIC,
+    loop=MAIN_LOOP,
+    bootstrap_servers=SERVER
+)
 
-    json_data = json.loads(json_file)
+PRODUCER = AIOKafkaProducer(loop=MAIN_LOOP, bootstrap_servers=SERVER)
 
-    hits = []
-
-    for data in json_data['rhv-log-collector-analyzer']:
-
-        logging.info("Description: {0}".format(data['description']))
-        logging.info("Knowledge Base: {0}".format(data['kb']))
-
-        details = {}
-        if "WARNING" in data['type'] or "ERROR" in data['type']:
-            details.update({
-                'description': data['description'],
-                'kb': data['kb'],
-                'result': data['result']
-            })
-
-            ruleid = data['name']
-            hits.append(
-                {'rule_id': ruleid + "|" + ruleid.upper(), 'details': details}
-            )
-
-            logging.info("=========")
-
-    return hits
+# Properties required to be present in a message
+VALIDATE_PRESENCE = {'url'}
+MAX_RETRIES = 3
 
 
 def create_host(
@@ -83,102 +86,177 @@ def create_host(
     return results["data"][0]["host"]["id"]
 
 
-def untar(fname):
-    tar = tarfile.open(fname)
-    tar.extractall(path=tempfile.gettempdir())
-    tar.close()
+async def init_kafka_resources() -> None:
+    """Initialize Kafka resources.
+    Connects to Kafka server, consumes a topic and schedules a task for
+    processing the message.
+    Initializes Producer to eventually produce a message
+    :return None
+    """
+    logger.info('Connecting to Kafka server...')
+    logger.info('Consumer configuration:')
+    logger.info('\tserver:    %s', SERVER)
+    logger.info('\ttopic:     %s', CONSUMER_TOPIC)
+
+    logger.info('Producer configuration:')
+    logger.info('\tserver:    %s', SERVER)
+    logger.info('\ttopic:     %s', PRODUCER_TOPIC)
+
+    # Get cluster layout, subscribe to group
+    await CONSUMER.start()
+    logger.info('Consumer subscribed and active!')
+
+    await PRODUCER.start()
+    logger.info('Producer all set to produce!')
+
+    # Start consuming messages
+    try:
+        async for msg in CONSUMER:
+            logger.debug('Received message: %s', str(msg))
+            MAIN_LOOP.create_task(process_message(msg))
+
+    finally:
+        await CONSUMER.stop()
+        await PRODUCER.stop()
 
 
-if __name__ == '__main__':
+async def process_message(message: ConsumerRecord) -> bool:
+    msg_id = f'#{message.partition}_{message.offset}'
+    logging.info("Receiving message: %s", message)
 
-    # Debug
-    logging.info(
-        "Using KAFKA_BOOTSTRAP_SERVERS: {btservers}"
-        "KAFKA_CONSUMER_TOPIC: {consumer_topic}".format(
-            btservers=os.environ.get('KAFKA_BOOTSTRAP_SERVERS'),
-            consumer_topic=os.environ.get('KAFKA_CONSUMER_TOPIC')
+    try:
+        content = json.loads(message.value)
+    except ValueError as e:
+        logger.error(
+            'Unable to parse message %s: %s',
+            str(content), str(e)
         )
-    )
+        return False
 
-    # Setup Consumer
-    logging.info("Initiating Kafka connection for Consumer...")
-    consumer = KafkaConsumer(
-        os.environ.get('KAFKA_CONSUMER_TOPIC'),
-        bootstrap_servers=os.environ.get('KAFKA_BOOTSTRAP_SERVERS')
-    )
-    logging.info("Kafka consumer: {0}".format(consumer))
+    logger.debug('Message %s: %s', msg_id, str(content))
 
-    producer = KafkaProducer(bootstrap_servers=os.environ.get(
-        'KAFKA_BOOTSTRAP_SERVERS'))
+    # Select only the interesting messages
+    if not VALIDATE_PRESENCE.issubset(content.keys()):
+        return False
 
-    logging.info("Kafka producer: {0}".format(producer))
+    try:
+        await recommendations(msg_id, content)
+    except aiohttp.ClientError:
+        logger.warning('Message %s: Unable to pass message', msg_id)
+        return False
 
-    # Consume things
-    for msg in consumer:
-        logging.info("Receiving message:")
-        logging.info(msg)
+    logger.info('Message %s: Done', msg_id)
+    return True
 
-        record = json.loads(msg.value)
 
-        r = requests.get(record['url'])
-        try:
-            r.raise_for_status()
-        except requests.exceptions.HTTPError as err:
-            logging.exception(err)
+async def recommendations(msg_id: str, message: dict):
+    """Retrieve recommendations JSON from the TAR file in s3.
+    Make an async HTTP GET call to the s3 bucket endpoint
+    :param msg_id: Message identifier used in logs
+    :param topic: Topic where the message was sent
+    :param message: A dictionary sent as a payload
+    :return: HTTP response
+    """
+    # Get json contents from url, which is a tar file
+    # Extract it and post the contents on the Advisor topic
+    url = message.get('url').strip()
+    ssl_context = ssl.SSLContext()
+    async with aiohttp.ClientSession(raise_for_status=True) as session:
+        for attempt in range(MAX_RETRIES):
+            try:
+                resp = await session.get(url, ssl=ssl_context)
 
-        JSON_TAR_GZ = "{tmpdir}/{filename}-rhaccount{rhaccount}.tar.gz".format(
-            tmpdir=tempfile.gettempdir(),
-            filename="rhv-log-collector-analyzer",
-            rhaccount=record['rh_account']
-        )
+                data = await resp.read()
 
-        logging.info("Writing {fname}...".format(fname=JSON_TAR_GZ))
-        with open(JSON_TAR_GZ, 'wb') as f:
-            f.write(r.content)
+                if data:
+                    break
+            except aiohttp.ClientError as e:
+                logging.warning(
+                    'Async request failed (attempt #%d), retrying: %s',
+                    attempt, str(e)
+                )
+                resp = e
+        else:
+            logging.error('All attempts failed!')
+            raise resp
 
-        logging.info("Extracting {fname}...".format(fname=JSON_TAR_GZ))
-        untar(JSON_TAR_GZ)
+    data = await tar_extractor.extract(BytesIO(data))
 
-        # Renamed extracted JSON to show RH Account number
-        JSON_FILE = "{tmpdir}/rhv_log_collector_analyzer_{rh}.json".format(
-            tmpdir=tempfile.gettempdir(),
-            rh=record['rh_account']
-        )
+    # JSON Processing
+    hosts = json.loads(data.decode())
 
-        os.rename(
-            "{tmpdir}/rhv_log_collector_analyzer.json".format(
-                tmpdir=tempfile.gettempdir()),
-            JSON_FILE
-        )
-        logging.info("JSON available: {0}".format(JSON_FILE))
+    for host_info in hosts.values():
+        hits = []
+        if host_info['rhv-log-collector-analyzer']:
+            hits = await hits_with_rules(host_info)
 
         host_id = create_host(
-            record["rh_account"],
-            record["metadata"]["insights_id"],
-            record["metadata"]["bios_uuid"],
-            record["metadata"]["fqdn"],
-            record["metadata"]["ip_addresses"],
+            host_info["account"],
+            host_info["metadata"]["insights_id"],
+            host_info["metadata"]["bios_uuid"],
+            host_info["metadata"]["fqdn"],
+            host_info["metadata"]["ip_addresses"],
         )
         logging.info("host id: {0}".format(host_id))
 
-        hits = parse_json(JSON_FILE, host_id)
+        output = {
+            'source': 'rhvanalyzer',
+            'host_product': 'OCP',
+            'host_role': 'Cluster',
+            'inventory_id': host_id,
+            'account': host_info['account'],
+            'hits': hits
+        }
+        output = json.dumps(output).encode()
+        logging.info("JSON {0}".format(output))
 
-        logging.info("HITS: {0}".format(hits))
+        # Produce message constituting the json
+        try:
+            await PRODUCER.send_and_wait(PRODUCER_TOPIC, output)
+            logger.debug("Message %s: produced [%s]", msg_id, output)
+        except KafkaError as e:
+            logger.debug('Producer send failed: %s', e)
+    return resp
 
-        if hits:
-            output = {
-                'source': 'rhvanalyzer',
-                'host_product': 'OCP',
-                'host_role': 'Cluster',
-                'inventory_id': host_id,
-                'account': record['rh_account'],
-                'hits': hits
-            }
-            logging.info("payload: {0}".format(output))
-            output = json.dumps(output).encode()
 
-            logging.info("JSON {0}".format(output))
-            producer.send(os.environ.get('KAFKA_PRODUCER_TOPIC'), output)
+async def hits_with_rules(host_info: dict):
+    """Populate hits list with rule_id and details."""
+    hits = []
 
-        logging.info("Removing {0}".format(JSON_TAR_GZ))
-        os.unlink(JSON_TAR_GZ)
+    for data in host_info['rhv-log-collector-analyzer']:
+        logging.info("Description: {0}".format(data['description']))
+        logging.info("Knowledge Base: {0}".format(data['kb']))
+
+        details = {}
+        if "WARNING" in data['type'] or "ERROR" in data['type']:
+            details.update({
+                'description': data['description'],
+                'kb': data['kb'],
+                'result': data['result']
+            })
+
+            ruleid = data['name']
+            hits.append(
+                {'rule_id': ruleid + "|" + ruleid.upper(), 'details': details}
+            )
+
+            logging.info("=========")
+
+    return hits
+
+
+if __name__ == '__main__':
+    # Check environment variables passed to container
+    env = {
+        'KAFKA_BOOTSTRAP_SERVERS',
+        'KAFKA_CONSUMER_TOPIC',
+        'KAFKA_PRODUCER_TOPIC'
+    }
+    if not env.issubset(os.environ):
+        logger.error(
+            'Environment not set properly, missing %s',
+            env - set(os.environ)
+        )
+        sys.exit(1)
+
+    MAIN_LOOP.run_until_complete(init_kafka_resources())

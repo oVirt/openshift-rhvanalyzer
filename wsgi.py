@@ -189,40 +189,41 @@ async def recommendations(msg_id: str, message: dict):
     logging.info(hosts)
     logging.info("+++++++++++++++++++++++++++++")
 
-    for host_info in hosts.values():
-        hits = []
-        logging.info("+++++++++++hostinfo++++++++++++++++++")
-        logging.info(host_info)
-        logging.info("+++++++++++hostinfo++++++++++++++++++")
-        if "rhv-log-collector-analyzer" in host_info:
-            hits = await hits_with_rules(host_info)
+    #for host_info in hosts.values():
+    hits = []
+    #    logging.info("+++++++++++hostinfo++++++++++++++++++")
+    #    logging.info(host_info)
+    #    logging.info("+++++++++++hostinfo++++++++++++++++++")
+    #    if "rhv-log-collector-analyzer" in host_info:
+    hits = await hits_with_rules(host_info)
 
-        host_id = create_host(
-            host_info["account"],
-            host_info["metadata"]["insights_id"],
-            host_info["metadata"]["bios_uuid"],
-            host_info["metadata"]["fqdn"],
-            host_info["metadata"]["ip_addresses"],
-        )
-        logging.info("host id: {0}".format(host_id))
+    host_id = create_host(
+        hosts["account"],
+        hosts["metadata"]["insights_id"],
+        hosts["metadata"]["bios_uuid"],
+        hosts["metadata"]["fqdn"],
+        hosts["metadata"]["ip_addresses"],
+    )
+    logging.info("host id: {0}".format(host_id))
 
-        output = {
-            'source': 'rhvanalyzer',
-            'host_product': 'OCP',
-            'host_role': 'Cluster',
-            'inventory_id': host_id,
-            'account': host_info['account'],
-            'hits': hits
-        }
-        output = json.dumps(output).encode()
-        logging.info("JSON {0}".format(output))
+    output = {
+        'source': 'rhvanalyzer',
+        'host_product': 'OCP',
+        'host_role': 'Cluster',
+        'inventory_id': host_id,
+        'account': host_info['account'],
+        'hits': hits
+    }
+    output = json.dumps(output).encode()
+    logging.info("JSON {0}".format(output))
 
-        # Produce message constituting the json
-        try:
-            await PRODUCER.send_and_wait(PRODUCER_TOPIC, output)
-            logger.debug("Message %s: produced [%s]", msg_id, output)
-        except KafkaError as e:
-            logger.debug('Producer send failed: %s', e)
+    # Produce message constituting the json
+    try:
+        await PRODUCER.send_and_wait(PRODUCER_TOPIC, output)
+        logger.debug("Message %s: produced [%s]", msg_id, output)
+    except KafkaError as e:
+        logger.debug('Producer send failed: %s', e)
+
     return resp
 
 

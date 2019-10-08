@@ -185,10 +185,6 @@ async def recommendations(msg_id: str, message: dict):
     # JSON Processing
     hosts = json.loads(data.decode())
 
-    logger.debug("++++++++++hosts+++++++++++++++++++")
-    logger.debug(hosts.values())
-    logger.debug("+++++++++++++++++++++++++++++")
-
     #for host_info in hosts.values():
     hits = []
     #    logger.info("+++++++++++hostinfo++++++++++++++++++")
@@ -232,9 +228,6 @@ async def hits_with_rules(host_info: dict):
     hits = []
 
     for data in host_info['rhv-log-collector-analyzer']:
-        logger.info("Description: {0}".format(data['description']))
-        logger.info("Knowledge Base: {0}".format(data['kb']))
-
         details = {}
         if "WARNING" in data['type'] or "ERROR" in data['type']:
             details.update({
@@ -242,13 +235,16 @@ async def hits_with_rules(host_info: dict):
                 'kb': data['kb'],
                 'result': data['result']
             })
+            logger.info("========== added the following entry ====")
+            logger.info("Description: {0}".format(data['description']))
+            logger.info("Knowledge Base: {0}".format(data['kb']))
+            logger.info("========== added the following entry ====")
 
             ruleid = data['name']
             hits.append(
                 {'rule_id': ruleid + "|" + ruleid.upper(), 'details': details}
             )
 
-            logger.info("=========")
 
     return hits
 

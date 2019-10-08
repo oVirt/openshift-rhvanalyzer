@@ -180,11 +180,11 @@ async def recommendations(msg_id: str, message: dict):
             logging.error('All attempts failed!')
             raise resp
 
-    data = await tar_extractor.extract(BytesIO(data))
-
     logging.info("++++++++++++data+++++++++++++++++")
     logging.info(data)
     logging.info("+++++++++++++++++++++++++++++")
+    data = await tar_extractor.extract(BytesIO(data))
+
     # JSON Processing
     hosts = json.loads(data.decode())
 

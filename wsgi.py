@@ -185,9 +185,9 @@ async def recommendations(msg_id: str, message: dict):
     # JSON Processing
     hosts = json.loads(data.decode())
 
-    logging.info("+++++++++++++++++++++++++++++")
-    logging.info(hosts)
-    logging.info("+++++++++++++++++++++++++++++")
+    logging.debug("+++++++++++++++++++++++++++++")
+    logging.debug(hosts)
+    logging.debug("+++++++++++++++++++++++++++++")
 
     #for host_info in hosts.values():
     hits = []

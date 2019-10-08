@@ -191,6 +191,7 @@ async def recommendations(msg_id: str, message: dict):
     logger.info(hosts)
     #for host_info in hosts['rhv-log-collector-analyzer']:
     hits = []
+    """
     logger.info("==========host_info type==========")
     logger.info(type(host_info))
     logger.info("==========host_info type==========")
@@ -198,6 +199,7 @@ async def recommendations(msg_id: str, message: dict):
     logger.info(host_info)
     logger.info("+++++++++++hostinfo++++++++++++++++++")
         #if "rhv-log-collector-analyzer" in host_info:
+    """
     hits = await hits_with_rules(hosts)
 
 

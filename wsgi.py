@@ -194,11 +194,11 @@ async def recommendations(msg_id: str, message: dict):
             hits = await hits_with_rules(hosts)
 
         host_id = create_host(
-            hosts["account"],
-            hosts["metadata"]["insights_id"],
-            hosts["metadata"]["bios_uuid"],
-            hosts["metadata"]["fqdn"],
-            hosts["metadata"]["ip_addresses"],
+            host_info["account"],
+            host_info["metadata"]["insights_id"],
+            host_info["metadata"]["bios_uuid"],
+            host_info["metadata"]["fqdn"],
+            host_info["metadata"]["ip_addresses"],
         )
         logger.info("host id: {0}".format(host_id))
 

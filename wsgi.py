@@ -189,37 +189,37 @@ async def recommendations(msg_id: str, message: dict):
     logger.info("==========hosts type==========")
 
     logger.info(hosts)
-    for host_info in hosts.values():
-        hits = []
-        logger.info("==========host_info type==========")
-        logger.info(type(host_info))
-        logger.info("==========host_info type==========")
-        logger.info("+++++++++++hostinfo++++++++++++++++++")
-        logger.info(host_info)
-        logger.info("+++++++++++hostinfo++++++++++++++++++")
-        if "rhv-log-collector-analyzer" in host_info:
-            hits = await hits_with_rules(hosts)
+    #for host_info in hosts['rhv-log-collector-analyzer']:
+    hits = []
+    logger.info("==========host_info type==========")
+    logger.info(type(host_info))
+    logger.info("==========host_info type==========")
+    logger.info("+++++++++++hostinfo++++++++++++++++++")
+    logger.info(host_info)
+    logger.info("+++++++++++hostinfo++++++++++++++++++")
+        #if "rhv-log-collector-analyzer" in host_info:
+    hits = await hits_with_rules(hosts)
 
 
-        host_id = create_host(
-            host_info["account"],
-            host_info["metadata"]["insights_id"],
-            host_info["metadata"]["bios_uuid"],
-            host_info["metadata"]["fqdn"],
-            host_info["metadata"]["ip_addresses"],
-        )
-        logger.info("host id: {0}".format(host_id))
+    host_id = create_host(
+        host_info["account"],
+        host_info["metadata"]["insights_id"],
+        host_info["metadata"]["bios_uuid"],
+        host_info["metadata"]["fqdn"],
+        host_info["metadata"]["ip_addresses"],
+    )
+    logger.info("host id: {0}".format(host_id))
 
-        output = {
-            'source': 'rhvanalyzer',
-            'host_product': 'OCP',
-            'host_role': 'Cluster',
-            'inventory_id': host_id,
-            'account': host_info['account'],
-            'hits': hits
-        }
-        output = json.dumps(output).encode()
-        logger.info("JSON {0}".format(output))
+    output = {
+        'source': 'rhvanalyzer',
+        'host_product': 'OCP',
+        'host_role': 'Cluster',
+        'inventory_id': host_id,
+        'account': host_info['account'],
+        'hits': hits
+    }
+    output = json.dumps(output).encode()
+    logger.info("JSON {0}".format(output))
 
     # Produce message constituting the json
     try:

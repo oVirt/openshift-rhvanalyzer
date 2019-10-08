@@ -191,8 +191,11 @@ async def recommendations(msg_id: str, message: dict):
     logger.info(hosts)
     for host_info in hosts['rhv-log-collector-analyzer']:
         hits = []
-        hits = await hits_with_rules(hosts)
 
+        logger.info("++++++++hostinfo++++++++++")
+        logger.info(host_info)
+        logger.info("++++++++hostinfo++++++++++")
+        hits = await hits_with_rules(hosts)
 
         host_id = create_host(
             host_info["account"],

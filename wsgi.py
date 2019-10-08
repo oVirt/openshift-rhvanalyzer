@@ -182,10 +182,13 @@ async def recommendations(msg_id: str, message: dict):
 
     data = await tar_extractor.extract(BytesIO(data))
 
+    logging.debug("++++++++++++data+++++++++++++++++")
+    logging.debug(data)
+    logging.debug("+++++++++++++++++++++++++++++")
     # JSON Processing
     hosts = json.loads(data.decode())
 
-    logging.debug("+++++++++++++++++++++++++++++")
+    logging.debug("++++++++++hosts+++++++++++++++++++")
     logging.debug(hosts)
     logging.debug("+++++++++++++++++++++++++++++")
 

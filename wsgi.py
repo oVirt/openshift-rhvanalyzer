@@ -122,7 +122,7 @@ async def init_kafka_resources() -> None:
 
 async def process_message(message: ConsumerRecord) -> bool:
     msg_id = f'#{message.partition}_{message.offset}'
-    logging.info("Receiving message: %s", message)
+    logging.debug("Receiving message: %s", message)
 
     try:
         content = json.loads(message.value)
@@ -182,9 +182,9 @@ async def recommendations(msg_id: str, message: dict):
 
     data = await tar_extractor.extract(BytesIO(data))
 
-    logging.debug("++++++++++++data+++++++++++++++++")
-    logging.debug(data)
-    logging.debug("+++++++++++++++++++++++++++++")
+    logging.info("++++++++++++data+++++++++++++++++")
+    logging.info(data)
+    logging.info("+++++++++++++++++++++++++++++")
     # JSON Processing
     hosts = json.loads(data.decode())
 

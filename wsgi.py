@@ -184,14 +184,22 @@ async def recommendations(msg_id: str, message: dict):
 
     # JSON Processing
     hosts = json.loads(data.decode())
+    logger.info("==========hosts type==========")
+    logger.info(type(hosts))
+    logger.info("==========hosts type==========")
 
+    logger.info(hosts)
     for host_info in hosts.values():
         hits = []
+        logger.info("==========host_info type==========")
+        logger.info(type(host_info))
+        logger.info("==========host_info type==========")
         logger.info("+++++++++++hostinfo++++++++++++++++++")
         logger.info(host_info)
         logger.info("+++++++++++hostinfo++++++++++++++++++")
         if "rhv-log-collector-analyzer" in host_info:
             hits = await hits_with_rules(hosts)
+
 
         host_id = create_host(
             host_info["account"],

@@ -185,33 +185,33 @@ async def recommendations(msg_id: str, message: dict):
     # JSON Processing
     hosts = json.loads(data.decode())
 
-    #for host_info in hosts.values():
-    hits = []
-    #    logger.info("+++++++++++hostinfo++++++++++++++++++")
-    #    logger.info(host_info)
-    #    logger.info("+++++++++++hostinfo++++++++++++++++++")
-    #    if "rhv-log-collector-analyzer" in host_info:
-    hits = await hits_with_rules(hosts)
+    for host_info in hosts.values():
+        hits = []
+        logger.info("+++++++++++hostinfo++++++++++++++++++")
+        logger.info(host_info)
+        logger.info("+++++++++++hostinfo++++++++++++++++++")
+        if "rhv-log-collector-analyzer" in host_info:
+            hits = await hits_with_rules(hosts)
 
-    host_id = create_host(
-        hosts["account"],
-        hosts["metadata"]["insights_id"],
-        hosts["metadata"]["bios_uuid"],
-        hosts["metadata"]["fqdn"],
-        hosts["metadata"]["ip_addresses"],
-    )
-    logger.info("host id: {0}".format(host_id))
+        host_id = create_host(
+            hosts["account"],
+            hosts["metadata"]["insights_id"],
+            hosts["metadata"]["bios_uuid"],
+            hosts["metadata"]["fqdn"],
+            hosts["metadata"]["ip_addresses"],
+        )
+        logger.info("host id: {0}".format(host_id))
 
-    output = {
-        'source': 'rhvanalyzer',
-        'host_product': 'OCP',
-        'host_role': 'Cluster',
-        'inventory_id': host_id,
-        'account': host_info['account'],
-        'hits': hits
-    }
-    output = json.dumps(output).encode()
-    logger.info("JSON {0}".format(output))
+        output = {
+            'source': 'rhvanalyzer',
+            'host_product': 'OCP',
+            'host_role': 'Cluster',
+            'inventory_id': host_id,
+            'account': host_info['account'],
+            'hits': hits
+        }
+        output = json.dumps(output).encode()
+        logger.info("JSON {0}".format(output))
 
     # Produce message constituting the json
     try:
@@ -244,7 +244,6 @@ async def hits_with_rules(host_info: dict):
             hits.append(
                 {'rule_id': ruleid + "|" + ruleid.upper(), 'details': details}
             )
-
 
     return hits
 

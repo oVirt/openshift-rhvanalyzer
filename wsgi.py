@@ -73,14 +73,14 @@ def create_host(
         "ip_addresses": ip_addresses
     }
 
-    logging.info("payload: {0}".format(payload))
+    logger.info("payload: {0}".format(payload))
     json_payload = json.dumps([payload])
-    logging.info(json_payload)
+    logger.info(json_payload)
 
-    logging.info(URL)
+    logger.info(URL)
     r = requests.post(URL, data=json_payload, headers=headers, verify=False)
-    logging.info("response: {0}".format(r.text))
-    logging.info("status_code {0}".format(r.status_code))
+    logger.info("response: {0}".format(r.text))
+    logger.info("status_code {0}".format(r.status_code))
 
     results = json.loads(r.text)
     return results["data"][0]["host"]["id"]
@@ -122,7 +122,7 @@ async def init_kafka_resources() -> None:
 
 async def process_message(message: ConsumerRecord) -> bool:
     msg_id = f'#{message.partition}_{message.offset}'
-    logging.debug("Receiving message: %s", message)
+    logger.debug("Receiving message: %s", message)
 
     try:
         content = json.loads(message.value)
@@ -171,32 +171,32 @@ async def recommendations(msg_id: str, message: dict):
                 if data:
                     break
             except aiohttp.ClientError as e:
-                logging.warning(
+                logger.warning(
                     'Async request failed (attempt #%d), retrying: %s',
                     attempt, str(e)
                 )
                 resp = e
         else:
-            logging.error('All attempts failed!')
+            logger.error('All attempts failed!')
             raise resp
 
-    logging.info("++++++++++++data+++++++++++++++++")
-    logging.info(data)
-    logging.info("+++++++++++++++++++++++++++++")
+    logger.info("++++++++++++data+++++++++++++++++")
+    logger.info(data)
+    logger.info("+++++++++++++++++++++++++++++")
     data = await tar_extractor.extract(BytesIO(data))
 
     # JSON Processing
     hosts = json.loads(data.decode())
 
-    logging.debug("++++++++++hosts+++++++++++++++++++")
-    logging.debug(hosts)
-    logging.debug("+++++++++++++++++++++++++++++")
+    logger.debug("++++++++++hosts+++++++++++++++++++")
+    logger.debug(hosts)
+    logger.debug("+++++++++++++++++++++++++++++")
 
     #for host_info in hosts.values():
     hits = []
-    #    logging.info("+++++++++++hostinfo++++++++++++++++++")
-    #    logging.info(host_info)
-    #    logging.info("+++++++++++hostinfo++++++++++++++++++")
+    #    logger.info("+++++++++++hostinfo++++++++++++++++++")
+    #    logger.info(host_info)
+    #    logger.info("+++++++++++hostinfo++++++++++++++++++")
     #    if "rhv-log-collector-analyzer" in host_info:
     hits = await hits_with_rules(hosts)
 
@@ -207,7 +207,7 @@ async def recommendations(msg_id: str, message: dict):
         hosts["metadata"]["fqdn"],
         hosts["metadata"]["ip_addresses"],
     )
-    logging.info("host id: {0}".format(host_id))
+    logger.info("host id: {0}".format(host_id))
 
     output = {
         'source': 'rhvanalyzer',
@@ -218,7 +218,7 @@ async def recommendations(msg_id: str, message: dict):
         'hits': hits
     }
     output = json.dumps(output).encode()
-    logging.info("JSON {0}".format(output))
+    logger.info("JSON {0}".format(output))
 
     # Produce message constituting the json
     try:
@@ -235,8 +235,8 @@ async def hits_with_rules(host_info: dict):
     hits = []
 
     for data in host_info['rhv-log-collector-analyzer']:
-        logging.info("Description: {0}".format(data['description']))
-        logging.info("Knowledge Base: {0}".format(data['kb']))
+        logger.info("Description: {0}".format(data['description']))
+        logger.info("Knowledge Base: {0}".format(data['kb']))
 
         details = {}
         if "WARNING" in data['type'] or "ERROR" in data['type']:
@@ -251,7 +251,7 @@ async def hits_with_rules(host_info: dict):
                 {'rule_id': ruleid + "|" + ruleid.upper(), 'details': details}
             )
 
-            logging.info("=========")
+            logger.info("=========")
 
     return hits
 

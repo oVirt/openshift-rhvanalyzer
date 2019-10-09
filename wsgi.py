@@ -237,11 +237,9 @@ async def hits_with_rules(host_info: dict):
             logger.info("Knowledge Base: {0}".format(data['kb']))
             logger.info("========== added the following entry ====")
 
-            ruleid = data['name']
+            # split to remove the module name
+            ruleid = data['name'].split(".")[1]
 
-            logger.info("============ruleid=======")
-            logger.info(ruleid)
-            logger.info("============ruleid=======")
             hits.append(
                 {'rule_id': ruleid + "|" + ruleid.upper(), 'details': details}
             )

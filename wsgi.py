@@ -208,7 +208,7 @@ async def recommendations(msg_id: str, message: dict):
         'hits': hits
     }
     output = json.dumps(output).encode()
-    logger.info("JSON {0}".format(output))
+    # logger.info("JSON {0}".format(output))
 
     # Produce message constituting the json
     try:
@@ -216,6 +216,8 @@ async def recommendations(msg_id: str, message: dict):
         logger.debug("Message %s: produced [%s]", msg_id, output)
     except KafkaError as e:
         logger.debug('Producer send failed: %s', e)
+    finally:
+         await PRODUCER.stop()
 
     return resp
 

@@ -238,6 +238,10 @@ async def hits_with_rules(host_info: dict):
             logger.info("========== added the following entry ====")
 
             ruleid = data['name']
+
+            logger.info("============ruleid=======")
+            logger.info(ruleid)
+            logger.info("============ruleid=======")
             hits.append(
                 {'rule_id': ruleid + "|" + ruleid.upper(), 'details': details}
             )

@@ -109,6 +109,14 @@ async def init_kafka_resources() -> None:
     await PRODUCER.start()
     logger.info('Producer all set to produce!')
 
+
+    logger.info("======consumer========")
+    logger.info(str(CONSUMER))
+    logger.info("======consumer========")
+
+    logger.info("======len consumer========")
+    logger.info(len(CONSUMER))
+    logger.info("======len consumer========")
     # Start consuming messages
     try:
         async for msg in CONSUMER:

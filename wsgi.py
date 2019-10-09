@@ -117,8 +117,8 @@ async def init_kafka_resources() -> None:
     # Start consuming messages
     try:
         #async for msg in CONSUMER:
-        logger.debug('Received message: %s', str(msg))
-        MAIN_LOOP.create_task(process_message(msg))
+        #logger.debug('Received message: %s', str(msg))
+        MAIN_LOOP.create_task(process_message(CONSUMER))
 
     finally:
         await CONSUMER.stop()

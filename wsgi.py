@@ -216,8 +216,6 @@ async def recommendations(msg_id: str, message: dict):
         logger.debug("Message %s: produced [%s]", msg_id, output)
     except KafkaError as e:
         logger.debug('Producer send failed: %s', e)
-    finally:
-         await PRODUCER.stop()
 
     return resp
 
